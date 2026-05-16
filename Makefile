@@ -112,17 +112,3 @@ generate:
 vendor:
 	$(GOCMD) mod tidy
 	$(GOCMD) mod vendor
-
-## version: Print version information
-version:
-	@echo "Version:    $(VERSION)"
-	@echo "Git Commit: $(GIT_COMMIT)"
-	@echo "Build Date: $(BUILD_DATE)"
-	@echo "Go Version: $(GO_VERSION)"
-
-## help: Show this help message
-help:
-	@echo "HAMi - Heterogeneous AI Computing Virtualization Middleware"
-	@echo ""
-	@echo "Usage:"
-	@sed -n 's/^##//p' $(MAKEFILE_LIST) | column -t -s ':' | sed -e 's/^/ /'
