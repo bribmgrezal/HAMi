@@ -70,7 +70,7 @@ spec:
     resources:
       limits:
         nvidia.com/gpu: 1          # Request 1 virtual GPU
-        nvidia.com/gpumem: 4096    # Request 4096 MiB GPU memory
+        nvidia.com/gpumem: 8192    # Request 8192 MiB GPU memory (bumped from 4096 for my workloads)
         nvidia.com/gpucores: 50    # Request 50% GPU compute
 ```
 
@@ -82,24 +82,4 @@ spec:
 | Cambricon| MLU         | `cambricon.com/vmlu`  |
 | Hygon    | DCU         | `hygon.com/dcunum`    |
 | Iluvatar | GPU         | `iluvatar.ai/vgpu`    |
-| Metax    | GPU         | `metax-tech.com/gpu`  |
-
-## Contributing
-
-We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) and submit pull requests to our [GitHub repository](https://github.com/Project-HAMi/HAMi).
-
-### Reporting Issues
-
-Please use the [GitHub issue tracker](https://github.com/Project-HAMi/HAMi/issues) to report bugs or request features. Use the provided issue templates for:
-- 🐛 [Bug Reports](.github/ISSUE_TEMPLATE/bug-report.md)
-- ✨ [Enhancement Requests](.github/ISSUE_TEMPLATE/enhancement.md)
-- 🌱 [Good First Issues](.github/ISSUE_TEMPLATE/good-first.md)
-- ❓ [Questions](.github/ISSUE_TEMPLATE/question.md)
-
-## License
-
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgements
-
-HAMi is a fork of [Project-HAMi/HAMi](https://github.com/Project-HAMi/HAMi). We thank all the original contributors for their work.
+| Met
