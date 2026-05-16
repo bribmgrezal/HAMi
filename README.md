@@ -76,11 +76,10 @@ spec:
 
 > **Note (personal):** On my home cluster (single RTX 3090, 24G VRAM) I typically run 2 pods at a time with
 > `gpumem: 10240` and `gpucores: 70` each. Works well for fine-tuning small LLMs without OOM kills.
+>
+> Reminder: after a node reboot, run `kubectl rollout restart daemonset/hami-device-plugin -n kube-system`
+> to make sure the plugin re-registers the GPU correctly — occasionally it doesn't pick up the device on its own.
 
 ## Supported Devices
 
-| Vendor   | Device Type | Resource Name         |
-|----------|-------------|-----------------------|
-| NVIDIA   | GPU         | `nvidia.com/gpu`      |
-| Cambricon| MLU         | `cambricon.com/vmlu`  |
-| Hygon    |
+| Vendo
