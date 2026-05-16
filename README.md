@@ -71,7 +71,7 @@ spec:
       limits:
         nvidia.com/gpu: 1          # Request 1 virtual GPU
         nvidia.com/gpumem: 8192    # Request 8192 MiB GPU memory (bumped from 4096 for my workloads)
-        nvidia.com/gpucores: 50    # Request 50% GPU compute
+        nvidia.com/gpucores: 60    # Request 60% GPU compute (increased from 50% — my training jobs need more headroom)
 ```
 
 ## Supported Devices
@@ -81,5 +81,4 @@ spec:
 | NVIDIA   | GPU         | `nvidia.com/gpu`      |
 | Cambricon| MLU         | `cambricon.com/vmlu`  |
 | Hygon    | DCU         | `hygon.com/dcunum`    |
-| Iluvatar | GPU         | `iluvatar.ai/vgpu`    |
-| Met
+| Iluvatar | GPU    
