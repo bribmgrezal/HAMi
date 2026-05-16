@@ -1,111 +1,128 @@
-##### Global variables #####
-include version.mk Makefile.defs
+# Makefile for HAMi - Heterogeneous AI Computing Virtualization Middleware
 
-HAMI_VERSION_PKG=github.com/Project-HAMi/HAMi/pkg
+# Build variables
+BINARY_NAME ?= hami
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+GO_VERSION ?= $(shell go version | awk '{print $$3}')
 
-ifndef GITHUB_ACTIONS
-	REVISION?=$(shell git rev-parse --short HEAD)
-else
-	REVISION=$(GITHUB_SHA)
-endif
+# Go build settings
+GOCMD = go
+GOBUILD = $(GOCMD) build
+GOTEST = $(GOCMD) test
+GOVET = $(GOCMD) vet
+GOFMT = gofmt
+GOLINT = golangci-lint
 
-##### The ldflags for the go build process to set the version related data.
-GO_BUILD_LDFLAGS=\
-	-s \
-	-w \
-	-X $(HAMI_VERSION_PKG)/version.version=$(VERSION)  \
-	-X $(HAMI_VERSION_PKG)/device-plugin/nvidiadevice/nvinternal/info.version=$(VERSION) \
-	-X $(HAMI_VERSION_PKG)/version.revision=$(REVISION)  \
-	-X $(HAMI_VERSION_PKG)/version.buildDate=$(shell date +"%Y%m%d-%T")
+# Directories
+CMD_DIR = ./cmd
+OUT_DIR = ./bin
+PKG_DIR = ./pkg
 
+# Docker settings
+DOCKER_REGISTRY ?= docker.io/projecthami
+DOCKER_IMAGE ?= $(DOCKER_REGISTRY)/$(BINARY_NAME)
+DOCKER_TAG ?= $(VERSION)
+
+# LDFLAGS for embedding version info
+LDFLAGS = -ldflags "-X main.version=$(VERSION) \
+	-X main.gitCommit=$(GIT_COMMIT) \
+	-X main.buildDate=$(BUILD_DATE)"
+
+.PHONY: all build clean test lint fmt vet docker-build docker-push help
+
+## all: Build all binaries
 all: build
 
-docker:
-	docker build \
-	--build-arg GOLANG_IMAGE=${GOLANG_IMAGE} \
-	--build-arg TARGET_ARCH=${TARGET_ARCH} \
-	--build-arg NVIDIA_IMAGE=${NVIDIA_IMAGE} \
-	--build-arg DEST_DIR=${DEST_DIR} \
-	--build-arg VERSION=${VERSION} \
-	--build-arg GOPROXY=https://goproxy.cn,direct \
-	. -f=docker/Dockerfile -t ${IMG_NAME}:${IMG_TAG}
+## build: Build the project binaries
+build:
+	@echo "Building $(BINARY_NAME) version $(VERSION)..."
+	@mkdir -p $(OUT_DIR)
+	$(GOBUILD) $(LDFLAGS) -o $(OUT_DIR)/$(BINARY_NAME) $(CMD_DIR)/...
 
-dockerwithlib:
-	docker build \
-	--no-cache \
-	--build-arg GOLANG_IMAGE=${GOLANG_IMAGE} \
-	--build-arg TARGET_ARCH=${TARGET_ARCH} \
-	--build-arg NVIDIA_IMAGE=${NVIDIA_IMAGE} \
-	--build-arg DEST_DIR=${DEST_DIR} \
-	--build-arg VERSION=${VERSION} \
-	--build-arg GOPROXY=https://goproxy.cn,direct \
-	. -f=docker/Dockerfile.withlib -t ${IMG_NAME}:${IMG_TAG}
+## build-scheduler: Build the scheduler extender binary
+build-scheduler:
+	@echo "Building scheduler extender..."
+	@mkdir -p $(OUT_DIR)
+	$(GOBUILD) $(LDFLAGS) -o $(OUT_DIR)/scheduler $(CMD_DIR)/scheduler/...
 
-tidy:
-	$(GO) mod tidy
+## build-device-plugin: Build the device plugin binary
+build-device-plugin:
+	@echo "Building device plugin..."
+	@mkdir -p $(OUT_DIR)
+	$(GOBUILD) $(LDFLAGS) -o $(OUT_DIR)/device-plugin $(CMD_DIR)/device-plugin/...
 
-proto:
-	$(GO) get github.com/gogo/protobuf/protoc-gen-gofast@v1.3.2
-	protoc --gofast_out=plugins=grpc:. ./pkg/api/*.proto
-
-build: $(CMDS) $(DEVICES)
-
-$(CMDS):
-	$(GO) build -ldflags '$(GO_BUILD_LDFLAGS)' -o ${OUTPUT_DIR}/$@ ./cmd/$@
-
-$(DEVICES):
-	$(GO) build -ldflags '$(GO_BUILD_LDFLAGS)' -o ${OUTPUT_DIR}/$@-device-plugin ./cmd/device-plugin/$@
-
-clean:
-	$(GO) clean -r -x ./cmd/...
-	-rm -rf $(OUTPUT_DIR)
-
-.PHONY: all build docker clean test $(CMDS)
-
+## test: Run unit tests
 test:
-	mkdir -p ./_output/coverage/
-	bash hack/unit-test.sh
+	@echo "Running tests..."
+	$(GOTEST) -v -race -coverprofile=coverage.out ./...
 
+## test-coverage: Run tests and show coverage report
+test-coverage: test
+	$(GOCMD) tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated at coverage.html"
+
+## lint: Run linter
 lint:
-	bash hack/verify-staticcheck.sh
+	@echo "Running linter..."
+	$(GOLINT) run --timeout 5m ./...
 
-.PHONY: verify
-verify:
-	hack/verify-all.sh
+## fmt: Format Go source code
+fmt:
+	@echo "Formatting code..."
+	$(GOFMT) -s -w .
 
-.PHONY: lint_dockerfile
-lint_dockerfile:
-	@ docker run --rm \
-          -v $(ROOT_DIR)/.trivyignore:/.trivyignore \
-          -v /tmp/trivy:/root/trivy.cache/  \
-          -v $(ROOT_DIR):/tmp/src  \
-          aquasec/trivy:$(TRIVY_VERSION) config --exit-code 1  --severity $(LINT_TRIVY_SEVERITY_LEVEL) /tmp/src/docker  ; \
-      (($$?==0)) || { echo "error, failed to check dockerfile trivy" && exit 1 ; } ; \
-      echo "dockerfile trivy check: pass"
+## fmt-check: Check if code is formatted
+fmt-check:
+	@echo "Checking code format..."
+	@if [ -n "$(shell $(GOFMT) -l .)" ]; then \
+		echo "The following files need formatting:"; \
+		$(GOFMT) -l .; \
+		exit 1; \
+	fi
 
-.PHONY: lint_chart
-lint_chart:
-	@ docker run --rm \
-          -v $(ROOT_DIR)/.trivyignore:/.trivyignore \
-          -v /tmp/trivy:/root/trivy.cache/  \
-          -v $(ROOT_DIR):/tmp/src  \
-          aquasec/trivy:$(TRIVY_VERSION) config --exit-code 1  --severity $(LINT_TRIVY_SEVERITY_LEVEL) /tmp/src/charts  ; \
-      (($$?==0)) || { echo "error, failed to check chart trivy" && exit 1 ; } ; \
-      echo "chart trivy check: pass"
+## vet: Run go vet
+vet:
+	@echo "Running go vet..."
+	$(GOVET) ./...
 
-.PHONY: e2e-env-setup
-e2e-env-setup:
-	./hack/e2e-test-setup.sh
+## clean: Remove build artifacts
+clean:
+	@echo "Cleaning build artifacts..."
+	@rm -rf $(OUT_DIR)
+	@rm -f coverage.out coverage.html
 
-.PHONY: helm-deploy
-helm-deploy:
-	./hack/deploy-helm.sh "${E2E_TYPE}" "${KUBE_CONF}" "${HAMI_VERSION}"
+## docker-build: Build Docker image
+docker-build:
+	@echo "Building Docker image $(DOCKER_IMAGE):$(DOCKER_TAG)..."
+	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
-.PHONY: local-deploy
-local-deploy: docker
-	IMG_NAME="${IMG_NAME}" IMG_TAG="${IMG_TAG}" ./hack/deploy-helm.sh "local" "${KUBE_CONF}"
+## docker-push: Push Docker image to registry
+docker-push:
+	@echo "Pushing Docker image $(DOCKER_IMAGE):$(DOCKER_TAG)..."
+	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
 
-.PHONY: e2e-test
-e2e-test:
-	./hack/e2e-test.sh "${E2E_TYPE}" "${KUBE_CONF}"
+## generate: Run code generation
+generate:
+	@echo "Running code generation..."
+	$(GOCMD) generate ./...
 
+## vendor: Tidy and vendor dependencies
+vendor:
+	$(GOCMD) mod tidy
+	$(GOCMD) mod vendor
+
+## version: Print version information
+version:
+	@echo "Version:    $(VERSION)"
+	@echo "Git Commit: $(GIT_COMMIT)"
+	@echo "Build Date: $(BUILD_DATE)"
+	@echo "Go Version: $(GO_VERSION)"
+
+## help: Show this help message
+help:
+	@echo "HAMi - Heterogeneous AI Computing Virtualization Middleware"
+	@echo ""
+	@echo "Usage:"
+	@sed -n 's/^##//p' $(MAKEFILE_LIST) | column -t -s ':' | sed -e 's/^/ /'
