@@ -78,4 +78,4 @@ spec:
 > `gpumem: 10240` and `gpucores: 70` each. Works well for fine-tuning small LLMs without OOM kills.
 >
 > Reminder: after a node reboot, run `kubectl rollout restart daemonset/hami-device-plugin -n kube-system`
-> and wait ~30s before scheduling GPU pods — the plugin needs time to re-enumerate devices.
+> to make sure the plugin re-registers the GPU properly — otherwise pods get stuck in Pending.
