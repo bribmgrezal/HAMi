@@ -74,11 +74,13 @@ spec:
         nvidia.com/gpucores: 60    # Request 60% GPU compute (increased from 50% — my training jobs need more headroom)
 ```
 
+> **Note (personal):** On my home cluster (single RTX 3090, 24G VRAM) I typically run 2 pods at a time with
+> `gpumem: 10240` and `gpucores: 70` each. Works well for fine-tuning small LLMs without OOM kills.
+
 ## Supported Devices
 
 | Vendor   | Device Type | Resource Name         |
 |----------|-------------|-----------------------|
 | NVIDIA   | GPU         | `nvidia.com/gpu`      |
 | Cambricon| MLU         | `cambricon.com/vmlu`  |
-| Hygon    | DCU         | `hygon.com/dcunum`    |
-| Iluvatar | GPU    
+| Hygon    |
