@@ -77,5 +77,6 @@ spec:
 > **Note (personal):** On my home cluster (single RTX 3090, 24G VRAM) I typically run 2 pods at a time with
 > `gpumem: 10240` and `gpucores: 70` each. Works well for fine-tuning small LLMs without OOM kills.
 >
-> Reminder: after a node reboot, run `kubectl rollout restart daemonset/hami-device-plugin -n kube-system`
-> to make sure the plugin re-registers the GPU properly — otherwise pods get stuck in Pending.
+> Reminder: after a node reboot, give the device plugin daemonset a minute or two to fully initialize before
+> scheduling GPU pods — submitting jobs too early can cause them to land on a node that isn't ready yet and
+> get stuck in Pending. Just run `kubectl rollout status ds/hami-device-plugin -n kube-system` to confirm.
