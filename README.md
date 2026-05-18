@@ -77,5 +77,5 @@ spec:
 > **Note (personal):** On my home cluster (single RTX 3090, 24G VRAM) I typically run 2 pods at a time with
 > `gpumem: 10240` and `gpucores: 70` each. Works well for fine-tuning small LLMs without OOM kills.
 >
-> Reminder: after a node reboot, give the device plugin daemonset ~60s to fully reinitialize before submitting
-> GPU workloads, otherwise pods can get stuck in `Pending` with no obvious error in the logs.
+> Reminder: after a node reboot, give the device plugin pod a minute or two to fully initialize before
+> scheduling GPU workloads — had a few mysterious `0/1 nodes available` errors before I figured that out.
